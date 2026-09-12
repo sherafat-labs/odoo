@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_dental_chair_user,dental.chair.user,model_dental_chair,dental_core.group_dental_user,1,0,0,0
+access_dental_chair_manager,dental.chair.manager,model_dental_chair,dental_core.group_dental_manager,1,1,1,1
+access_dental_tooth_record_user,dental.tooth.record.user,model_dental_tooth_record,dental_core.group_dental_user,1,1,1,0
+access_dental_tooth_record_manager,dental.tooth.record.manager,model_dental_tooth_record,dental_core.group_dental_manager,1,1,1,1
+access_dental_prescription_user,dental.prescription.user,model_dental_prescription,dental_core.group_dental_user,1,1,1,0
+access_dental_prescription_manager,dental.prescription.manager,model_dental_prescription,dental_core.group_dental_manager,1,1,1,1
+access_dental_prescription_line_user,dental.prescription.line.user,model_dental_prescription_line,dental_core.group_dental_user,1,1,1,0
+access_dental_prescription_line_manager,dental.prescription.line.manager,model_dental_prescription_line,dental_core.group_dental_manager,1,1,1,1

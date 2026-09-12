@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_dental_chair_tree" model="ir.ui.view">
+        <field name="name">dental.chair.list</field>
+        <field name="model">dental.chair</field>
+        <field name="arch" type="xml">
+            <list string="Clinic Chairs / Rooms">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="location"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_dental_chair_form" model="ir.ui.view">
+        <field name="name">dental.chair.form</field>
+        <field name="model">dental.chair</field>
+        <field name="arch" type="xml">
+            <form string="Clinic Chair / Room">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="code"/>
+                        </group>
+                        <group>
+                            <field name="location"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group string="Description">
+                        <field name="description"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_dental_chair" model="ir.actions.act_window">
+        <field name="name">Chairs / Rooms</field>
+        <field name="res_model">dental.chair</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_dental_chair" name="Chairs &amp; Rooms" parent="dental_core.menu_dental_config" action="action_dental_chair" sequence="20"/>
+</odoo>
