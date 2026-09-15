@@ -1,5 +1,8 @@
 import { formatCurrency } from "@point_of_sale/app/models/utils/currency";
 import { toRaw } from "@odoo/owl";
+import { logPosMessage } from "@point_of_sale/app/utils/pretty_console_log";
+
+const CONSOLE_COLOR = "#FF8269";
 
 /**
  * This module provides functions to format order and order line data for customer display.
@@ -18,14 +21,23 @@ export class CustomerDisplayPosAdapter {
 
     dispatch(pos) {
         this.channel.postMessage(JSON.parse(JSON.stringify(this.data)));
+        const deviceUuid = localStorage.getItem("device_uuid");
+        if (!deviceUuid) {
+            // The uuid is only created when the customer display is opened, so
+            // there is nothing to notify yet. A display running in this browser
+            // is served by the BroadcastChannel anyway.
+            return;
+        }
         pos.data
-            .call("pos.config", "update_customer_display", [
-                [pos.config.id],
-                this.data,
-                localStorage.getItem("device_uuid"),
-            ])
+            .call("pos.config", "update_customer_display", [[pos.config.id], this.data, deviceUuid])
             .catch((error) => {
-                console.info("Failed to update customer display:", error);
+                logPosMessage(
+                    "CustomerDisplay",
+                    "dispatch",
+                    "Failed to update customer display",
+                    CONSOLE_COLOR,
+                    [error]
+                );
             });
     }
 
@@ -34,7 +46,12 @@ export class CustomerDisplayPosAdapter {
         this.data = {
             finalized: order.finalized,
             general_customer_note: order.general_customer_note,
-            amount: order.currencyDisplayPrice,
+            amount: order.currencyDisplayPriceIncl,
+            subtotal:
+                order.config_id.iface_tax_included !== "total" &&
+                order.prices.taxDetails.has_tax_groups &&
+                order.currencyDisplayPriceExcl,
+            amountTaxes: order.prices.taxDetails.has_tax_groups && order.currencyAmountTaxes,
             change: order.change && formatCurrency(order.change, order.currency),
             paymentLines: order.payment_ids.map((pl) => this.getPaymentData(pl)),
             lines: order.lines.map((l) => this.getOrderlineData(l)),

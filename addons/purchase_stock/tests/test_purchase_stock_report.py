@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+from datetime import datetime, timedelta
+
+from odoo import Command
 from odoo.tests import Form
 from odoo.addons.mail.tests.common import mail_new_test_user
 from odoo.addons.stock.tests.test_report import TestReportsCommon
@@ -200,6 +203,31 @@ class TestPurchaseStockReports(TestReportsCommon):
         draft_purchase_qty = self.sum_dicts(docs['product'], 'draft_purchase_qty')['in']
         self.assertEqual(draft_purchase_qty, 150)
 
+    def test_purchase_report_effective_days_to_arrival(self):
+        """ Test that 'Effective Days To Arrival' counts the days between the
+        order confirmation date and the effective receipt date.
+        """
+        po = self.env['purchase.order'].create({
+            'partner_id': self.partner.id,
+            'date_order': datetime.now() - timedelta(days=10),
+            'order_line': [Command.create({
+                'product_id': self.product.id,
+                'product_qty': 1,
+                'date_planned': datetime.now() + timedelta(days=5),
+            })],
+        })
+        po.button_confirm()
+        po.picking_ids.button_validate()
+
+        po.flush_model()
+        po.picking_ids.flush_recordset(['date_done'])
+        report = self.env['purchase.report'].formatted_read_group(
+            [('order_id', '=', po.id)],
+            ['order_id'],
+            ['days_to_arrival:avg'],
+        )
+        self.assertEqual(round(report[0]['days_to_arrival:avg']), 10)
+
     def test_vendor_delay_report_with_uom(self):
         """
         PO 12 units x P
@@ -380,3 +408,36 @@ class TestPurchaseStockReports(TestReportsCommon):
             [(rec['qty_on_time:sum'], rec['qty_total:sum'], rec['on_time_rate:sum']) for rec in data],
             [(6, 10, 60), (6, 10, 60)]
         )
+
+    def test_vendor_delay_report_with_duplicate_receipt_without_backorder(self):
+        """
+        PO 10 units x P
+        Receive 6 x P without backorder
+        Duplicate picking with remaining 4 x P
+        -> 100% received
+        """
+        po_form = Form(self.env['purchase.order'])
+        po_form.partner_id = self.partner
+        with po_form.order_line.new() as line:
+            line.product_id = self.product
+            line.product_qty = 10
+        po = po_form.save()
+        po.button_confirm()
+
+        receipt01 = po.picking_ids
+        receipt01.move_ids.quantity = 6
+        action = receipt01.button_validate()
+        Form(self.env[action['res_model']].with_context(action['context'])).save().process_cancel_backorder()
+        receipt02 = receipt01.copy()
+        receipt02.move_ids.write({
+            'product_uom_qty': 4,
+        })
+        receipt02.button_validate()
+        data = self.env['vendor.delay.report'].web_read_group(
+            [('partner_id', '=', self.partner.id)],
+            ['product_id'],
+            ['on_time_rate:sum', 'qty_on_time:sum', 'qty_total:sum'],
+        )['groups'][0]
+        self.assertEqual(data['qty_total:sum'], 10)
+        self.assertEqual(data['qty_on_time:sum'], 10)
+        self.assertEqual(data['on_time_rate:sum'], 100)

@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from odoo import api, fields, models, _
 from odoo.fields import Domain
-from odoo.tools import float_compare
+from odoo.tools import float_compare, float_is_zero
 from odoo.exceptions import UserError
 
 
@@ -207,11 +207,43 @@ class SaleOrderLine(models.Model):
                         continue
                     qty += move.product_uom._compute_quantity(move.quantity, line.product_uom_id, rounding_method='HALF-UP')
                 for move in incoming_moves:
-                    if move.state != 'done':
+                    # An unlinked move coming from a customer is still a real return, only skip unlinked non-returns (dropship receipts).
+                    if move.state != 'done' or (
+                        not move.origin_returned_move_id
+                        and not move.location_id._is_outgoing()
+                        and line.product_uom_qty > 0
+                        and not move.picking_id.return_id
+                    ):
                         continue
                     qty -= move.product_uom._compute_quantity(move.quantity, line.product_uom_id, rounding_method='HALF-UP')
                 delivered_qties[line] = qty
         return delivered_qties
+
+    def _compute_invoice_status(self):
+        def check_moves_state(moves):
+            # All moves states are either 'done' or 'cancel', and there is at least one 'done'
+            at_least_one_done = False
+            for move in moves:
+                if move.state not in ['done', 'cancel']:
+                    return False
+                at_least_one_done = at_least_one_done or move.state == 'done'
+            return at_least_one_done
+        super()._compute_invoice_status()
+        for line in self:
+            # We handle the following specific situation: a physical product is partially delivered,
+            # but we would like to set its invoice status to 'Fully Invoiced'. The use case is for
+            # products sold by weight, where the delivered quantity rarely matches exactly the
+            # quantity ordered.
+            if (
+                line.state == 'sale'
+                and line.invoice_status == 'no'
+                and line.product_id.type in ['consu', 'product']
+                and line.product_id.invoice_policy == 'delivery'
+                and line.move_ids
+                and check_moves_state(line.move_ids)
+                and not float_is_zero(line.qty_delivered, precision_rounding=line.product_uom_id.rounding)
+            ):
+                line.invoice_status = 'invoiced'
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -303,16 +335,20 @@ class SaleOrderLine(models.Model):
         outgoing_moves_ids = set()
         incoming_moves_ids = set()
 
-        moves = self.move_ids.filtered(lambda r: r.state != 'cancel' and r.location_dest_usage != 'inventory' and self.product_id == r.product_id)
+        moves = self.move_ids.filtered(lambda m: m.location_dest_usage != 'inventory' and self.product_id == m.product_id and m.company_id == self.company_id)
         if moves and not strict:
             # The first move created was the one created from the intial rule that started it all.
+            # Look at every move ever created for this line, including cancelled ones: if the
+            # triggering move gets cancelled later on (e.g. SO cancellation), the rule that started
+            # the chain must stay the same, otherwise remaining done moves get wrongly re-classified.
             sorted_moves = moves.sorted('id')
             triggering_rule_ids = []
             seen_wh_ids = set()
             for move in sorted_moves:
-                if move.warehouse_id.id not in seen_wh_ids:
+                if move.warehouse_id.id not in seen_wh_ids and move.rule_id:
                     triggering_rule_ids.append(move.rule_id.id)
                     seen_wh_ids.add(move.warehouse_id.id)
+        moves = moves.filtered(lambda m: m.state != 'cancel')
         if self.env.context.get('accrual_entry_date'):
             accrual_date = fields.Date.from_string(self.env.context['accrual_entry_date'])
             moves = moves.filtered(lambda r: fields.Date.context_today(r, r.date) <= accrual_date)
@@ -325,7 +361,11 @@ class SaleOrderLine(models.Model):
             )):
                 if not move.origin_returned_move_id or (move.origin_returned_move_id and move.to_refund):
                     outgoing_moves_ids.add(move.id)
-            elif (move._is_incoming() or move.location_id._is_outgoing()) and move.to_refund:
+            elif move.to_refund and (
+                (strict and move._is_incoming() or move.location_id._is_outgoing()) or (
+                not strict and move.rule_id.id in triggering_rule_ids and
+                (move.location_final_id or move.location_dest_id).usage == 'internal'
+            )):
                 incoming_moves_ids.add(move.id)
 
         return self.env['stock.move'].browse(outgoing_moves_ids), self.env['stock.move'].browse(incoming_moves_ids)
@@ -420,3 +460,9 @@ class SaleOrderLine(models.Model):
             )
         )
         return res
+
+    def has_valued_move_ids(self):
+        return (
+            any(move.state not in ('cancel', 'draft') for move in self.move_ids)
+            or super().has_valued_move_ids()  # TODO: remove in master
+        )

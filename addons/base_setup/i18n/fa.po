@@ -1,6 +1,6 @@
 # Translation of Odoo Server.
 # This file contains the translation of the following modules:
-# 	* base_setup
+# * base_setup
 #
 # Translators:
 # Mohsen Mohammadi <iammohsen.123@gmail.com>, 2023
@@ -12,20 +12,25 @@
 # rahim agh <rahim.aghareb@gmail.com>, 2023
 # Hamed Mohammadi <hamed@dehongi.com>, 2023
 # Ali Reza Feizi Derakhshi, 2023
-#
+# Weblate <noreply-mt-weblate@weblate.org>, 2025, 2026.
+# Omid Ghaffarinia <omid.ghaffarinia@gmail.com>, 2026.
+# Heshmatkhah <maheshmatkhah.soft@gmail.com>, 2026.
+# Aliraza Habibitanha <alireza.habibitanha@gmail.com>, 2026.
 msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 16.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-10-08 18:37+0000\n"
-"PO-Revision-Date: 2022-09-22 05:45+0000\n"
-"Last-Translator: Ali Reza Feizi Derakhshi, 2023\n"
-"Language-Team: Persian (https://app.transifex.com/odoo/teams/41243/fa/)\n"
+"POT-Creation-Date: 2026-01-25 18:36+0000\n"
+"PO-Revision-Date: 2026-08-09 11:37+0000\n"
+"Last-Translator: Aliraza Habibitanha <alireza.habibitanha@gmail.com>\n"
+"Language-Team: Persian <https://translate.odoo.com/projects/odoo-19/"
+"base_setup/fa/>\n"
 "Language: fa\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
-"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"Plural-Forms: nplurals=2; plural=n > 1;\n"
+"X-Generator: Weblate 2026.6.1\n"
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -44,6 +49,12 @@ msgid ""
 "                                        Active Users\n"
 "                                    </span>"
 msgstr ""
+"<span class=\"o_form_label\" invisible=\"active_user_count &gt; 1\">\n"
+"کاربر فعال\n"
+"</span>\n"
+"<span class=\"o_form_label\" invisible=\"active_user_count &lt;= 1\">\n"
+"کاربران فعال\n"
+"</span>"
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -57,6 +68,13 @@ msgid ""
 "                                    </span>\n"
 "                                    <br/>"
 msgstr ""
+"<span class=\"o_form_label\" invisible=\"company_count &gt; 1\">\n"
+"شرکت\n"
+"</span>\n"
+"<span class=\"o_form_label\" invisible=\"company_count &lt;= 1\">\n"
+"شرکت‌ها\n"
+"</span>\n"
+"<br/>"
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -69,6 +87,12 @@ msgid ""
 "                                            Languages\n"
 "                                        </span>"
 msgstr ""
+"<span class=\"o_form_label\" invisible=\"language_count &gt; 1\">\n"
+"زبان\n"
+"</span>\n"
+"<span class=\"o_form_label\" invisible=\"language_count &lt;= 1\">\n"
+"زبان‌‌ها\n"
+"</span>"
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -85,6 +109,8 @@ msgid ""
 "<strong>Save</strong> this page and come back here to set up Cloudflare "
 "turnstile."
 msgstr ""
+"<strong>ذخیره</strong> این صغحه و به اینجا بازگردید تا تنظیمات Cloudflare "
+"Turnstile را انجام دهید."
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -92,6 +118,8 @@ msgid ""
 "<strong>Save</strong> this page and come back here to set up Google Places "
 "API key"
 msgstr ""
+"صفحه را <strong>ذخیره کنید</strong> و برای پیکربندی کلید API مکان‌های گوگل "
+"دوباره به این صفحه برگردید"
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -110,7 +138,7 @@ msgstr ""
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
 msgid "API Keys"
-msgstr ""
+msgstr "کلیدهای API"
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -118,6 +146,8 @@ msgid ""
 "API Keys allow your users to access Odoo with external tools when multi-"
 "factor authentication is enabled."
 msgstr ""
+"کلیدهای API به کاربران شما این امکان را می‌دهند که با ابزارهای خارجی به Odoo "
+"دسترسی پیدا کنند، زمانی که احراز هویت چندمرحله‌ای فعال باشد."
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -169,7 +199,7 @@ msgstr "اجازه کار در محیط چند ارزه بده"
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
 msgid "Autocomplete partner addresses with Google Places"
-msgstr ""
+msgstr "تکمیل خودکار آدرس‌های طرف همکار با Google Places"
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -182,6 +212,9 @@ msgid ""
 "By default, new users get highest access rights for all installed apps. If "
 "unchecked, new users will only have basic employee access."
 msgstr ""
+"در حالت پیش‌فرض، کاربران جدید برای تمام برنامه‌های نصب شده سطح دسترسی دریافت "
+"می‌کنند. با غیرفعال بودن این گزینه، کاربران جدید تنها دارای دسترسی پایه "
+"کارمند خواهند بود."
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -191,12 +224,12 @@ msgstr "طرح اسناد خود را انتخاب کنید"
 #. module: base_setup
 #: model:ir.model.fields,field_description:base_setup.field_res_config_settings__module_website_cf_turnstile
 msgid "Cloudflare Turnstile"
-msgstr ""
+msgstr "Cloudflare Turnstile"
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
 msgid "Companies"
-msgstr "شرکت"
+msgstr "شرکت‌ها"
 
 #. module: base_setup
 #: model:ir.model.fields,field_description:base_setup.field_res_config_settings__company_id
@@ -206,7 +239,7 @@ msgstr "شرکت"
 #. module: base_setup
 #: model:ir.model.fields,field_description:base_setup.field_res_config_settings__company_country_code
 msgid "Company Country Code"
-msgstr ""
+msgstr "کد کشور شرکت"
 
 #. module: base_setup
 #: model:ir.model.fields,field_description:base_setup.field_res_config_settings__company_informations
@@ -245,7 +278,7 @@ msgstr "مخاطبان"
 #. module: base_setup
 #: model:ir.model.fields,field_description:base_setup.field_res_config_settings__company_country_group_codes
 msgid "Country Group Codes"
-msgstr ""
+msgstr "کدهای گروه کشور"
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -253,6 +286,8 @@ msgid ""
 "Create corresponding in/out orders and bills when you sell/buy between your "
 "companies"
 msgstr ""
+"هنگام فروش/خرید بین شرکت‌های خود، سفارش‌های ورودی/خروجی و صورت‌حساب‌های مربوطه "
+"را ایجاد کنید"
 
 #. module: base_setup
 #: model:ir.model.fields,field_description:base_setup.field_res_config_settings__report_footer
@@ -268,7 +303,7 @@ msgstr "حق دسترسی های پیش فرض"
 #. odoo-python
 #: code:addons/base_setup/models/res_config_settings.py:0
 msgid "Default access for new users"
-msgstr ""
+msgstr "دسترسی پیش‌فرض برای کاربران جدید"
 
 #. module: base_setup
 #: model:ir.model.fields,field_description:base_setup.field_ir_http__display_name
@@ -276,12 +311,12 @@ msgstr ""
 #: model:ir.model.fields,field_description:base_setup.field_res_config_settings__display_name
 #: model:ir.model.fields,field_description:base_setup.field_res_users__display_name
 msgid "Display Name"
-msgstr ""
+msgstr "نام نمایشی"
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
 msgid "Document Layout"
-msgstr ""
+msgstr "طرح‌ سند"
 
 #. module: base_setup
 #: model:ir.model.fields,field_description:base_setup.field_res_config_settings__external_report_layout_id
@@ -297,7 +332,7 @@ msgstr "ویرایش طرح بندی"
 #. odoo-python
 #: code:addons/base_setup/models/res_config_settings.py:0
 msgid "Edit new user default group"
-msgstr ""
+msgstr "ویرایش گروه پیش‌فرض کاربر جدید"
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -332,17 +367,17 @@ msgstr "محلی سازی جغرافیایی"
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
 msgid "Geolocate your partners"
-msgstr ""
+msgstr "مکان‌یابی جغرافیایی طرف‌های همکار"
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
 msgid "Geolocation"
-msgstr ""
+msgstr "موقعیت جغرافیایی"
 
 #. module: base_setup
 #: model:ir.model.fields,field_description:base_setup.field_res_config_settings__module_google_address_autocomplete
 msgid "Google Address Autocomplete"
-msgstr ""
+msgstr "تکمیل خودکار آدرس گوگل"
 
 #. module: base_setup
 #: model:ir.model,name:base_setup.model_ir_http
@@ -355,7 +390,7 @@ msgstr "مسیریابی HTTP"
 #: model:ir.model.fields,field_description:base_setup.field_res_config_settings__id
 #: model:ir.model.fields,field_description:base_setup.field_res_users__id
 msgid "ID"
-msgstr ""
+msgstr "شناسه"
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -365,7 +400,7 @@ msgstr "ورود و خروج فایل"
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
 msgid "Integrate with mail client plugins"
-msgstr ""
+msgstr "با پلاگین‌های ایمیل مشتری ادغام کنید."
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -380,12 +415,12 @@ msgstr "معاملات بین شرکتی"
 #. module: base_setup
 #: model:ir.model.fields,field_description:base_setup.field_res_config_settings__is_root_company
 msgid "Is Root Company"
-msgstr ""
+msgstr "شرکت مادر است"
 
 #. module: base_setup
 #: model:ir.model,name:base_setup.model_kpi_provider
 msgid "KPI Provider"
-msgstr ""
+msgstr "ارائه‌دهندهٔ شاخص‌های کلیدی عملکرد (KPI)"
 
 #. module: base_setup
 #: model:ir.model.fields,field_description:base_setup.field_res_config_settings__module_auth_ldap
@@ -461,7 +496,7 @@ msgstr "احراز هویت OAuth"
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
 msgid "Odoo"
-msgstr ""
+msgstr "اودو"
 
 #. module: base_setup
 #: model:ir.model.fields,field_description:base_setup.field_res_config_settings__module_partner_autocomplete
@@ -481,7 +516,7 @@ msgstr "مجوزها"
 #. module: base_setup
 #: model:ir.model.fields,field_description:base_setup.field_res_config_settings__module_voip
 msgid "Phone"
-msgstr ""
+msgstr "تلفن"
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -496,7 +531,7 @@ msgstr "پروفایل سازی فعال شد تا"
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
 msgid "Progressive Web App"
-msgstr ""
+msgstr "برنامه وب پیشرفته"
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -506,18 +541,18 @@ msgstr "از فرم های خود در برابر هرزنامه و سوء اس�
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
 msgid "Protect your forms with CF Turnstile."
-msgstr ""
+msgstr "فرم‌های خود را با CF Turnstile محافظت کنید."
 
 #. module: base_setup
 #. odoo-javascript
 #: code:addons/base_setup/static/src/views/module_views.xml:0
 msgid "Reset Updating States"
-msgstr ""
+msgstr "بازنشانی وضعیت‌های به‌روزرسانی"
 
 #. module: base_setup
 #: model:ir.model.fields,field_description:base_setup.field_res_config_settings__module_sms
 msgid "SMS"
-msgstr ""
+msgstr "پیامک"
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -550,6 +585,8 @@ msgid ""
 "The ISO country code in two chars. \n"
 "You can use this field for quick search."
 msgstr ""
+"کد کشور ISO در دو کاراکتر.\n"
+"می توانید از این قسمت برای جستجوی سریع استفاده کنید."
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -557,6 +594,7 @@ msgid ""
 "This name will be used for the application when Odoo is installed through "
 "the browser."
 msgstr ""
+"این نام برای برنامه زمانی که Odoo از طریق مرورگر نصب می‌شود، استفاده خواهد شد."
 
 #. module: base_setup
 #: model:ir.model.fields,field_description:base_setup.field_res_config_settings__module_web_unsplash
@@ -597,7 +635,7 @@ msgstr "کاربران"
 #. odoo-python
 #: code:addons/base_setup/models/res_config_settings.py:0
 msgid "VAT"
-msgstr "ارزش افزوده"
+msgstr "شناسه مالیاتی"
 
 #. module: base_setup
 #: model_terms:ir.ui.view,arch_db:base_setup.res_config_settings_view_form
@@ -614,12 +652,12 @@ msgstr ""
 #. odoo-python
 #: code:addons/base_setup/models/res_users.py:0
 msgid "You have to install the Discuss application to use this feature."
-msgstr ""
+msgstr "باید برنامه گفتگو را نصب کنید تا بتوانید از این قابلیت استفاده کنید."
 
 #. module: base_setup
 #: model:ir.model.fields,field_description:base_setup.field_res_config_settings__module_google_recaptcha
 msgid "reCAPTCHA"
-msgstr ""
+msgstr "reCAPTCHA"
 
 #~ msgid "Asterisk (VoIP)"
 #~ msgstr "ستاره (VoIP)"

@@ -25,9 +25,9 @@ export class CategorySelector extends Component {
     }
 
     getCategoriesAndSub() {
-        const rootCategories = this.pos.models["pos.category"]
-            .filter((category) => !category.parent_id)
-            .sort((a, b) => a.sequence - b.sequence);
+        const rootCategories = [...this.pos.rootCategories].sort(
+            (a, b) => a.sequence - b.sequence || a.name.localeCompare(b.name)
+        );
         const selected = this.pos.selectedCategory ? [this.pos.selectedCategory] : [];
         const allParents = selected.concat(this.pos.selectedCategory?.allParents || []).reverse();
         return this.getCategoriesList(rootCategories, allParents, 0)
@@ -56,8 +56,25 @@ export class CategorySelector extends Component {
     }
 
     getChildCategories(selectedCategory) {
-        return selectedCategory
-            ? [...selectedCategory.child_ids]
-            : this.pos.models["pos.category"].filter((category) => !category.parent_id);
+        return selectedCategory ? [...selectedCategory.child_ids] : this.pos.rootCategories;
+    }
+
+    getAllSelected() {
+        return this.getAncestorsAndCurrent().filter(Boolean).length === 0;
+    }
+    hasParent() {
+        const selectedCategory = this.pos.selectedCategory;
+        return !!(selectedCategory && selectedCategory.parent_id);
+    }
+    isAncestorOrSelected(category) {
+        const selected = this.pos.selectedCategory;
+        if (!selected) {
+            return false;
+        }
+        return category.id === selected.id || selected.allParents.some((p) => p.id === category.id);
+    }
+
+    showCategoryImg(category) {
+        return this.pos.config.show_category_images && category.imgSrc && !this.ui.isSmall;
     }
 }

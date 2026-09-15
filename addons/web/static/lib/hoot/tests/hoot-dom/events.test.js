@@ -491,6 +491,67 @@ describe(parseUrl(import.meta.url), () => {
         expect.verifySteps(["pointerdown:0(1)@button", "pointerup:0@button", "click:0@button"]);
     });
 
+    test("click on touch: slow listener does not suppress the click", async () => {
+        mockTouch(true);
+
+        await mountForTest(/* xml */ `<button type="button">Click me</button>`);
+
+        on("button", "pointerdown", () => advanceTime(600));
+
+        await hover("button");
+        monitorEvents("button");
+
+        await click("button");
+
+        expect.verifySteps([
+            "pointerdown:0(1)@button",
+            "focus@button",
+            "focusin@button",
+            "pointerup:0@button",
+            "click:0@button",
+        ]);
+    });
+
+    test("click on touch: a held pointer suppresses the click", async () => {
+        mockTouch(true);
+
+        await mountForTest(/* xml */ `<button type="button">Click me</button>`);
+
+        await hover("button");
+        monitorEvents("button");
+
+        await pointerDown("button");
+        await advanceTime(600);
+        await pointerUp("button");
+
+        expect.verifySteps([
+            "pointerdown:0(1)@button",
+            "focus@button",
+            "focusin@button",
+            "pointerup:0@button",
+        ]);
+    });
+
+    test("click on touch: a held drag suppresses the click on drop", async () => {
+        mockTouch(true);
+
+        await mountForTest(/* xml */ `<button type="button">Click me</button>`);
+
+        await hover("button");
+        monitorEvents("button");
+
+        const { drop } = await drag("button");
+        await advanceTime(600);
+        await drop();
+
+        expect.verifySteps([
+            "pointerdown:0(1)@button",
+            "focus@button",
+            "focusin@button",
+            "pointerup:0@button",
+        ]);
+    });
+
     test("click: iframe", async () => {
         await mountForTest(/* xml */ `
             <button>Click me</button>
@@ -1236,8 +1297,8 @@ describe(parseUrl(import.meta.url), () => {
             "pointerleave:0@input",
             "mouseleave:0@input",
             // Change
-            "blur@input",
             "change@input",
+            "blur@input",
             "focusout@input",
         ]);
     });
@@ -1432,6 +1493,24 @@ describe(parseUrl(import.meta.url), () => {
         await setInputFiles(new File([""], "file.txt"));
 
         expect("input").toHaveValue(/file\.txt/);
+    });
+
+    test("setInputFiles: shadow root", async () => {
+        await mountForTest(/* xml */ `
+            <div class="container" />
+        `);
+
+        const shadow = queryOne(".container").attachShadow({
+            mode: "open",
+        });
+        const input = document.createElement("input");
+        input.type = "file";
+        shadow.appendChild(input);
+
+        await click(".container:shadow input");
+        await setInputFiles(new File([""], "file.txt"));
+
+        expect(".container:shadow input").toHaveValue(/file\.txt/);
     });
 
     test("setInputRange: basic case and events", async () => {
@@ -1741,6 +1820,8 @@ describe(parseUrl(import.meta.url), () => {
             "focus@input",
             "focusin@input",
             "focusin@form",
+            "keyup:Tab@input",
+            "keyup:Tab@form",
             // Enter
             "keydown:Enter@input",
             "keydown:Enter@form",
@@ -1772,6 +1853,8 @@ describe(parseUrl(import.meta.url), () => {
             "focus@button",
             "focusin@button",
             "focusin@form",
+            "keyup:Tab@button",
+            "keyup:Tab@form",
             // Enter
             "keydown:Enter@button",
             "keydown:Enter@form",
@@ -1804,6 +1887,8 @@ describe(parseUrl(import.meta.url), () => {
             "focus@button",
             "focusin@button",
             "focusin@form",
+            "keyup:Tab@button",
+            "keyup:Tab@form",
             // Enter
             "keydown:Enter@button",
             "keydown:Enter@form",

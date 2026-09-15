@@ -5,7 +5,7 @@
     'description': """
 Base module containing core functionalities required by other Nilvera modules.
     """,
-    'depends': ['l10n_tr'],
+    'depends': ['l10n_tr', 'account_edi_ubl_cii'],
     'data': [
         'security/ir.model.access.csv',
         'views/res_config_settings_views.xml',
@@ -14,5 +14,6 @@ Base module containing core functionalities required by other Nilvera modules.
     ],
     'post_init_hook': '_l10n_tr_nilvera_post_init',
     'author': 'Odoo S.A.',
+    'uninstall_hook': 'uninstall_hook',
     'license': 'LGPL-3',
 }

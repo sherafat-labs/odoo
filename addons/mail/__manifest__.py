@@ -42,12 +42,13 @@ these accounts will be automatically downloaded into your Odoo system. All
 POP3/IMAP-compatible servers are supported, included those that require an
 encrypted SSL/TLS connection.
 This can be used to easily create email-based workflows for many email-enabled Odoo documents, such as:
-----------------------------------------------------------------------------------------------------------
-    * CRM Leads/Opportunities
-    * CRM Claims
-    * Project Issues
-    * Project Tasks
-    * Human Resource Recruitment (Applicants)
+
+* CRM Leads/Opportunities
+* CRM Claims
+* Project Issues
+* Project Tasks
+* Human Resource Recruitment (Applicants)
+
 Just install the relevant application, and you can assign any of these document
 types (Leads, Project Issues) to your incoming email accounts. New emails will
 automatically spawn new documents of the chosen type, so it's a snap to create a
@@ -144,6 +145,7 @@ For more specific needs, you may also assign custom-defined actions
             # depends on BS variables, can't be loaded in assets_primary or assets_secondary
             'mail/static/src/scss/variables/derived_variables.scss',
             'mail/static/src/scss/*.scss',
+            'mail/static/lib/idb-keyval/idb-keyval.js',
             'mail/static/lib/selfie_segmentation/selfie_segmentation.js',
             'mail/static/src/js/**/*',
             'mail/static/src/model/**/*',
@@ -167,6 +169,7 @@ For more specific needs, you may also assign custom-defined actions
             ('remove', 'mail/static/src/discuss/**/*.dark.scss'),
             'mail/static/src/views/fields/**/*',
             ('remove', 'mail/static/src/views/web/activity/**'),
+            'mail/static/src/convert_inline/**/*',
         ],
         'web.assets_backend_lazy': [
             'mail/static/src/views/web/activity/**',
@@ -208,6 +211,9 @@ For more specific needs, you may also assign custom-defined actions
         ],
         'mail.assets_lamejs': [
             'mail/static/lib/lame/lame.js',
+        ],
+        "mail.assets_message_email": [
+            "web/static/lib/odoo_ui_icons/style.css",
         ],
         'mail.assets_public': [
             'web/static/lib/jquery/jquery.js',

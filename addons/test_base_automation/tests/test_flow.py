@@ -404,6 +404,41 @@ else:
         self.assertNotEqual(lead.deadline, False)
         self.assertEqual(send_mail_count, 1)
 
+    def test_014_recompute_on_create(self):
+        """An automation runs once when its trigger field is computed during create."""
+        stage_field = self.env.ref("test_base_automation.field_base_automation_lead_test__stage_id")
+        create_automation(
+            self,
+            model_id=self.env['ir.model']._get_id('base.automation.lead.thread.test'),
+            trigger='on_create_or_write',
+            trigger_field_ids=[Command.link(stage_field.id)],
+            filter_domain="[('stage_id', '!=', False)]",
+            _actions={
+                'state': 'mail_post',
+                'mail_post_method': 'email',
+                'template_id': self.test_mail_template_automation.id,
+            },
+        )
+
+        send_mail_count = 0
+
+        def _patched_send_mail(*args, **kwargs):
+            nonlocal send_mail_count
+            send_mail_count += 1
+
+        patcher = patch('odoo.addons.mail.models.mail_template.MailTemplate.send_mail', _patched_send_mail)
+        self.startPatcher(patcher)
+
+        lead = self.env['base.automation.lead.thread.test'].with_context(
+            test_base_automation_read_stage_on_create=True,
+        ).create({
+            'name': "Lead Test",
+            'user_id': self.user_root.id,
+        })
+        self.addCleanup(lead.unlink)
+        self.assertTrue(lead.stage_id)
+        self.assertEqual(send_mail_count, 1)
+
     def test_020_recursive(self):
         """ Check that a rule is executed recursively by a secondary change. """
         create_automation(
@@ -1402,6 +1437,52 @@ class TestCompute(common.TransactionCase):
         r.parent_id = company2
         self.assertEqual(r.display_name, 'Awiclo, Bob')
 
+    def test_computation_sequence(self):
+        """ This test ensure sequential computation is done and all fields are correctly set
+        when a filter_pre_domain trigger computation of one of the chain element
+        """
+        project = self.env['test_base_automation.project'].create({})
+        task = self.env['test_base_automation.task'].create({
+            'project_id': project.id,
+            'allocated_hours': 100,
+        })
+
+        # this action is executed every time a task is modified
+        create_automation(
+            self,
+            model_id=self.env.ref('test_base_automation.model_test_base_automation_task').id,
+            trigger='on_create_or_write',
+            filter_pre_domain="[('remaining_hours', '>', 0)]",
+            _actions={'state': 'code'},  # no-op action
+        )
+
+        task.trigger_hours = 5
+        self.assertRecordValues(task, [{
+            'effective_hours': 5,
+            'remaining_hours': 95,
+        }])
+
+    def test_computation_inside_computation(self):
+        """ An automation processed from a nested computation keeps the fields depending on the outer one to compute """
+        project = self.env['test_base_automation.project'].create({})
+        parent = self.env['test_base_automation.task'].create({'project_id': project.id})
+        task = self.env['test_base_automation.task'].create({'allocated_hours': 40})
+
+        # the post-filter computes 'effective_hours', which computes 'project_id' in turn
+        create_automation(
+            self,
+            model_id=self.env.ref('test_base_automation.model_test_base_automation_task').id,
+            trigger='on_create_or_write',
+            filter_domain="[('effective_hours', '>=', 0)]",
+            _actions={'state': 'code', 'code': 'record.remaining_hours'},
+        )
+
+        task.write({'parent_id': parent.id, 'trigger_hours': 8})
+        self.assertRecordValues(task, [{
+            'effective_hours': 8,
+            'remaining_hours': 32,
+        }])
+
     def test_recursion(self):
         project = self.env['test_base_automation.project'].create({})
 
@@ -1710,6 +1791,63 @@ class TestCompute(common.TransactionCase):
         expected.insert(0, {
             "code": "pass",
             "display_name": WhitespaceInsensitive(f"May 12, 2025, 11:30:00 AM - {self.env.ref('base.user_root').name}"),
+        })
+        assert_history(action, expected)
+
+    def test_server_action_code_history_wizard_with_no_timezone(self):
+        self.env.user.tz = False
+
+        def get_history(action):
+            return self.env["ir.actions.server.history"].search([("action_id", "=", action.id)])
+
+        def assert_history(action, expected):
+            history = get_history(action)
+            self.assertRecordValues(history, expected)
+
+        expected = []
+
+        with freeze_time("2025-05-01 10:00:00"):
+            self.env.cr._now = datetime.datetime.now()  # reset transaction's NOW
+            action = self.env["ir.actions.server"].create({
+                "name": "Test Action",
+                "model_id": self.env["ir.model"]._get("res.partner").id,
+                "state": "code",
+                "code": "pass",
+            })
+        expected.insert(0, {
+            "code": "pass",
+            "display_name": WhitespaceInsensitive(f"May 1, 2025, 10:00:00 AM - {self.env.ref('base.user_root').name}"),
+        })
+        assert_history(action, expected)
+
+        with freeze_time("2025-05-01 10:00:00"):
+            self.env.cr._now = datetime.datetime.now()  # reset transaction's NOW
+            action.with_user(self.env.ref('base.user_admin')).write({"code": "hello"})
+        expected.insert(0, {
+            "code": "hello",
+            "display_name": WhitespaceInsensitive(f"May 1, 2025, 10:00:00 AM - {self.env.ref('base.user_admin').name}"),
+        })
+        assert_history(action, expected)
+
+        with freeze_time("2025-05-12 10:00:00"):
+            self.env.cr._now = datetime.datetime.now()  # reset transaction's NOW
+            with Form(self.env['server.action.history.wizard'].with_context(default_action_id=action.id)) as wizard_form:
+                self.assertRecordValues(wizard_form.revision, [
+                    {
+                        "code": "pass",
+                        "display_name": WhitespaceInsensitive(f"May 1, 2025, 10:00:00 AM - {self.env.ref('base.user_root').name}"),
+                    }
+                ])
+                first_diff = str(wizard_form.code_diff)
+                wizard_form.revision = get_history(action)[-1]
+                second_diff = str(wizard_form.code_diff)
+                self.assertNotEqual(first_diff, second_diff)
+            wizard_form.record.restore_revision()
+
+        self.assertEqual(action.code, "pass")
+        expected.insert(0, {
+            "code": "pass",
+            "display_name": WhitespaceInsensitive(f"May 12, 2025, 10:00:00 AM - {self.env.ref('base.user_root').name}"),
         })
         assert_history(action, expected)
 

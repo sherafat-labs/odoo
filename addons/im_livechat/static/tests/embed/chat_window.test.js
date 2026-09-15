@@ -3,20 +3,27 @@ import {
     loadDefaultEmbedConfig,
 } from "@im_livechat/../tests/livechat_test_helpers";
 import {
+    assertChatBubbleAndWindowImStatus,
     click,
     contains,
     inputFiles,
     insertText,
+    mockGetMedia,
     onRpcBefore,
     start,
     startServer,
     triggerHotkey,
 } from "@mail/../tests/mail_test_helpers";
-import { describe, test } from "@odoo/hoot";
-import { asyncStep, serverState, waitForSteps } from "@web/../tests/web_test_helpers";
+import { Attachment } from "@mail/core/common/attachment_model";
+import { describe, expect, test } from "@odoo/hoot";
+import { mockFetch } from "@odoo/hoot-mock";
+import { asyncStep, patchWithCleanup, serverState, waitForSteps, withUser } from "@web/../tests/web_test_helpers";
 
 import { deserializeDateTime } from "@web/core/l10n/dates";
+import { rpc } from "@web/core/network/rpc";
 import { getOrigin } from "@web/core/utils/urls";
+import { browser } from "@web/core/browser/browser";
+import { session } from "@web/session";
 
 describe.current.tags("desktop");
 defineLivechatModels();
@@ -44,6 +51,52 @@ test("Conversation name is operator livechat user name", async () => {
     await start({ authenticateAs: false });
     await click(".o-livechat-LivechatButton");
     await contains(".o-mail-ChatWindow-header", { text: "MitchellOp" });
+});
+
+test("Portal users should not be able to start a call", async () => {
+    mockGetMedia();
+    const pyEnv = await startServer();
+    await loadDefaultEmbedConfig();
+    const joelUid = pyEnv["res.users"].create({
+        name: "Joel",
+        share: true,
+        login: "joel",
+        password: "joel",
+    });
+    const joelPid = pyEnv["res.partner"].create({
+        name: "Joel",
+        user_ids: [joelUid],
+    });
+    pyEnv["res.partner"].write(serverState.partnerId, { user_livechat_username: "MitchellOp" });
+    await start({ authenticateAs: { login: "joel", password: "joel" } });
+    await click(".o-livechat-LivechatButton");
+    await contains(".o-mail-ChatWindow-header:text('MitchellOp')");
+    await insertText(".o-mail-Composer-input", "Hello MitchellOp!");
+    await triggerHotkey("Enter");
+    await contains(".o-mail-Message[data-persistent]:contains('Hello MitchellOp!')");
+    await contains(".o-mail-ChatWindow-header .o-mail-ActionList-button", { count: 2 });
+    await contains(".o-mail-ChatWindow-header .o-mail-ActionList-button[title='Fold']");
+    await contains(".o-mail-ChatWindow-header .o-mail-ActionList-button[title*='Close']");
+    await contains(".o-discuss-Call", { count: 0 });
+    // simulate operator starts call
+    const [channelId] = pyEnv["discuss.channel"].search([
+        ["channel_type", "=", "livechat"],
+        [
+            "channel_member_ids",
+            "in",
+            pyEnv["discuss.channel.member"].search([["partner_id", "=", joelPid]]),
+        ],
+    ]);
+    await withUser(serverState.userId, () =>
+        rpc("/mail/rtc/channel/join_call", { channel_id: channelId }, { silent: true })
+    );
+    await contains(".o-discuss-Call button", { count: 2 });
+    await contains(".o-discuss-Call button[title='Join Video Call']");
+    await contains(".o-discuss-Call button[title='Join Call']");
+    // still same actions in header
+    await contains(".o-mail-ChatWindow-header .o-mail-ActionList-button", { count: 2 });
+    await contains(".o-mail-ChatWindow-header .o-mail-ActionList-button[title='Fold']");
+    await contains(".o-mail-ChatWindow-header .o-mail-ActionList-button[title*='Close']");
 });
 
 test("avatar url contains access token for non-internal users", async () => {
@@ -105,4 +158,104 @@ test("can close confirm livechat with keyboard", async () => {
     await triggerHotkey("Enter");
     await waitForSteps(["/im_livechat/visitor_leave_session"]);
     await contains(".o-mail-ChatWindow", { text: "Did we correctly answer your question?" });
+});
+
+test("Should not show IM status of agents", async () => {
+    mockGetMedia();
+    const pyEnv = await startServer();
+    await loadDefaultEmbedConfig();
+    const joelUid = pyEnv["res.users"].create({
+        name: "Joel",
+        share: true,
+        login: "joel",
+        password: "joel",
+    });
+    pyEnv["res.partner"].create({ name: "Joel", user_ids: [joelUid] });
+    pyEnv["res.partner"].write(serverState.partnerId, {
+        im_status: "online",
+        user_livechat_username: "MitchellOp",
+    });
+    await start({ authenticateAs: { login: "joel", password: "joel" } });
+    await click(".o-livechat-LivechatButton");
+    await contains(".o-mail-ChatWindow-header:text('MitchellOp')");
+    await insertText(".o-mail-Composer-input", "Hello MitchellOp!");
+    await triggerHotkey("Enter");
+    await contains(".o-mail-Message[data-persistent]:contains('Hello MitchellOp!')");
+    await click(".o-mail-ChatWindow-header");
+    await contains(".o-mail-ChatBubble");
+    await assertChatBubbleAndWindowImStatus("MitchellOp", 0);
+});
+
+test("should not make XMLHttpRequest to server file content when embedded externally", async () => {
+    patchWithCleanup(browser.location, {
+        origin: "https://www.hoot.test",
+    });
+    patchWithCleanup(session, {
+        origin: window.location.origin,
+    });
+    mockFetch(() => {
+        throw new Error("Should not fetch from external to odoo");
+    });
+    patchWithCleanup(HTMLAnchorElement.prototype, {
+        click() {
+            const url = new URL(this.href);
+            expect.step(`${url.origin} ${url.searchParams.get("filename")}`);
+        },
+    });
+
+    const pyEnv = await startServer();
+    await loadDefaultEmbedConfig();
+
+    const [partnerUser] = pyEnv["res.users"].search_read([["id", "=", serverState.partnerId]]);
+    await start({ authenticateAs: partnerUser });
+    await click(".o-livechat-LivechatButton");
+    const textFile = new File(["hello, world"], "test.txt", { type: "text/plain" });
+    await contains(".o-mail-Composer");
+
+    await click(".o-mail-Composer button[title='More Actions']");
+    await contains(".dropdown-item:contains('Attach files')");
+    await inputFiles(".o-mail-Composer .o_input_file", [textFile]);
+    await contains(".o-mail-AttachmentContainer:not(.o-isUploading):contains(test.txt) .fa-check");
+    await click(".o-mail-Composer button[title='Send']:enabled");
+    await contains(".o-mail-Message .o-mail-AttachmentContainer:contains(test.txt)");
+    await click(".o-mail-Message .o-mail-AttachmentContainer:contains(test.txt) [title='Download']");
+
+    expect.verifySteps([
+        `${session.origin} test.txt`,
+    ]);
+});
+
+/** @see {@link import("@mail/core/attachment_list_patch").ExternalLivechatDisabledPdfReason} */
+test("should not allow preview of PDF attachments when embedded externally", async () => {
+    patchWithCleanup(browser.location, {
+        origin: "https://www.hoot.test",
+    });
+    patchWithCleanup(session, {
+        origin: window.location.origin,
+    });
+    patchWithCleanup(Attachment.prototype, {
+        get isViewable() {
+            const res = super.isViewable;
+            if (res) {
+                expect.step("fileViewer.isViewable");
+            }
+            return res;
+        },
+    });
+
+    const pyEnv = await startServer();
+    await loadDefaultEmbedConfig();
+
+    const [partnerUser] = pyEnv["res.users"].search_read([["id", "=", serverState.partnerId]]);
+    await start({ authenticateAs: partnerUser });
+    await click(".o-livechat-LivechatButton");
+    const pdfFile = new File(["hello, world"], "test.pdf", { type: "application/pdf" });
+    await contains(".o-mail-Composer");
+
+    await click(".o-mail-Composer button[title='More Actions']");
+    await contains(".dropdown-item:contains('Attach files')");
+    await inputFiles(".o-mail-Composer .o_input_file", [pdfFile]);
+    await contains(".o-mail-AttachmentContainer:not(.o-isUploading):contains(test.pdf) .fa-check");
+    await click(".o-mail-Composer button[title='Send']:enabled");
+    await click(".o-mail-Message .o-mail-AttachmentContainer:contains(test.pdf)");
 });

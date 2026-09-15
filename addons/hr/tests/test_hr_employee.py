@@ -2,13 +2,15 @@
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from psycopg2.errors import UniqueViolation
+from freezegun import freeze_time
 
 from odoo import fields, Command
 from odoo.fields import Domain
-from odoo.tests import Form, users, new_test_user, HttpCase, tagged
+from odoo.tests import Form, users, new_test_user, HttpCase, tagged, TransactionCase
 from odoo.addons.hr.tests.common import TestHrCommon
 from odoo.tools import mute_logger
 from odoo.exceptions import ValidationError
+from psycopg2.errors import NotNullViolation
 
 class TestHrEmployee(TestHrCommon):
 
@@ -84,6 +86,38 @@ class TestHrEmployee(TestHrCommon):
         employee = employee_form.save()
         self.assertEqual(employee.tz, _tz)
 
+    def test_employee_timezone(self):
+        self.res_users_hr_officer.tz = "Africa/Cairo"
+        Employee = self.env['hr.employee'].with_user(self.res_users_hr_officer)
+        employee_form = Form(Employee)
+        employee_form.user_id = self.res_users_hr_officer
+        employee_form.name = 'Youssef Ahmed'
+        employee_form.work_email = 'yoahm@example.com'
+        employee = employee_form.save()
+
+        # validate timezone sync between employee & user
+        self.assertEqual(employee.tz, self.res_users_hr_officer.tz)
+
+        # validate that we can change timezone on user
+        self.res_users_hr_officer.tz = "Europe/Brussels"
+        self.assertEqual(self.res_users_hr_officer.tz, employee.tz)
+
+        # validate that we can change timezone on employee
+        employee.tz = "Europe/London"
+        self.assertEqual(self.res_users_hr_officer.tz, employee.tz)
+
+        # Check False value on employee
+        with mute_logger('odoo.sql_db'), self.assertRaises(NotNullViolation):
+            employee.tz = False
+
+        # Check False value on user
+        with mute_logger('odoo.sql_db'), self.assertRaises(NotNullViolation):
+            self.res_users_hr_officer.tz = False
+
+        # Check None value on user's calendar
+        with mute_logger('odoo.sql_db'), self.assertRaises(NotNullViolation):
+            self.res_users_hr_officer.company_id.resource_calendar_id.write({'tz': None})
+
     def test_employee_from_user(self):
         _tz = 'Pacific/Apia'
         _tz2 = 'America/Tijuana'
@@ -98,6 +132,18 @@ class TestHrEmployee(TestHrCommon):
         self.assertEqual(employee.name, 'Raoul Grosbedon')
         self.assertEqual(employee.work_email, self.res_users_hr_officer.email)
         self.assertEqual(employee.tz, self.res_users_hr_officer.tz)
+
+    def test_employee_computed_from_user(self):
+        self.res_users_hr_officer.name = 'Raoul Grosbedon'
+        self.res_users_hr_officer.email = 'raoul@example.com'
+        Employee = self.env['hr.employee']
+        employee_form = Form(Employee)
+        employee_form.user_id = self.res_users_hr_officer
+        self.assertEqual(employee_form.name, 'Raoul Grosbedon')
+        self.assertEqual(employee_form.work_email, 'raoul@example.com')
+        employee = employee_form.save()
+        self.assertEqual(employee.name, 'Raoul Grosbedon')
+        self.assertEqual(employee.work_email, 'raoul@example.com')
 
     def test_employee_from_manager_tz_no_reset(self):
         _tz = 'Pacific/Apia'
@@ -571,6 +617,8 @@ class TestHrEmployee(TestHrCommon):
         ])
         employeeA = self.env['hr.employee'].create({
             'name': 'Employee',
+            'date_version': datetime(2025, 1, 1),
+            'contract_date_start': datetime(2025, 1, 1),
         })
 
         # Testing employeA on regular working schedule
@@ -614,6 +662,12 @@ class TestHrEmployee(TestHrCommon):
             }, {
                 'name': 'Multi Email Employee',
                 'work_email': '"Name1" <name@test.example.com>, "Name 2" <name2@test.example.com>',
+            }, {
+                'name': 'Duplicate Email Employee 1',
+                'work_email': 'duplicate@example.com',
+            }, {
+                'name': 'Duplicate Email Employee 2',
+                'work_email': 'duplicate@example.com',
             },
         ])
         # Add an existing employee who already has a user to the employee list
@@ -623,13 +677,15 @@ class TestHrEmployee(TestHrCommon):
         action = confirmed_employees.action_create_users()
 
         params = action.get('params')
+        self.assertEqual(params.get('message'), f"The following employees have the same work email address: {employees[6].name}, {employees[7].name}")
+        params = params.get('next').get('params')
         self.assertEqual(params.get('message'), f"User already exists with the same email for Employees {employees[0].name}, {employees[4].name}")
         params = params.get('next').get('params')
         self.assertEqual(params.get('message'), f"You need to set a valid work email address for {employees[2].name}, {employees[5].name}")
         params = params.get('next').get('params')
         self.assertEqual(params.get('message'), f"You need to set the work email address for {employees[3].name}")
         params = params.get('next').get('params')
-        self.assertEqual(params.get('message'), f"User already exists for Those Employees {employees[6].name}")
+        self.assertEqual(params.get('message'), f"User already exists for Those Employees {employees[8].name}")
         params = params.get('next').get('params')
         self.assertEqual(params.get('message'), f"Users {employees[1].name} creation successful")
         self.assertTrue(employees[1].user_id)
@@ -666,6 +722,21 @@ class TestHrEmployee(TestHrCommon):
         self.assertNotEqual(partner.email, second_employee.work_email)
         self.assertNotEqual(partner.email, first_employee.work_email)
 
+    def test_exclude_archived_employees_from_direct_subordinate_filter(self):
+        """ Test that archived subordinates aren't included when searching on child_ids. """
+        employee_1, employee_2 = self.env['hr.employee'].create([
+            {'name': 'first employee'},
+            {'name': 'second employee'}
+        ])
+        employee_2.parent_id = employee_1
+
+        result = self.env['hr.employee'].search([('child_ids', '!=', False)])
+        self.assertIn(employee_1, result)
+
+        employee_2.active = False
+
+        result = self.env['hr.employee'].search([('child_ids', '!=', False)])
+        self.assertNotIn(employee_1, result)
 
 @tagged('-at_install', 'post_install')
 class TestHrEmployeeLinks(HttpCase):
@@ -691,6 +762,105 @@ class TestHrEmployeeLinks(HttpCase):
                 "check_public_employee_link_redirect",
                 login=user_amy.login,
             )
+
+
+@tagged('-at_install', 'post_install')
+class TestVersionCron(TransactionCase):
+    """Test the behavior of CRONs affecting hr.version"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+
+        # Will be used for default employee version address (contains phone)
+        cls.env.user.company_id = cls.env['res.company'].create(
+            {'name': 'Pokémon Center', 'phone': '+32404040404'}
+        )
+
+        # Employee has a default version that will be overridden
+        with freeze_time("2020-10-07"):
+            cls.employee = cls.env['hr.employee'].create(
+                {
+                    'name': 'Charizard',
+                    'work_phone': '+32404040404',
+                    "distance_home_work": 32,
+                    "distance_home_work_unit": 'miles',
+                }
+            )
+
+    def test_version_cron_update_no_fields(self):
+        """
+        Employees should not see their fields be updated if the CRON does not
+        change their version.
+        """
+        with freeze_time('2023-10-06'):
+            self.employee.create_version(
+                {'date_version': '2023-10-07', "distance_home_work": 40}
+            )
+
+        # Saving current employee data to compare later on
+        employee_values = {}
+        # some fields cannot be accessed. We need to filter them out
+        employee_fields = [
+            field
+            for field in self.env['hr.employee']._fields
+            if hasattr(self.employee, field)
+        ]
+        for field in employee_fields:
+            employee_values[field] = self.employee[field]
+
+        # Should not change to new version
+        with freeze_time('2023-10-06'):
+            self.env['hr.employee']._cron_update_current_version_id()
+
+        for field in employee_fields:
+            self.assertEqual(
+                employee_values[field],
+                self.employee[field],
+                f"""No field should change if _cron_update_current_version_id() does not change the version.
+    However, the field {field} changed""",
+            )
+
+    def test_version_cron_update_fields(self):
+        """
+        Employees should see some of their field be changed if the CRON changes
+        their version.
+        """
+        with freeze_time('2023-10-06'):
+            self.employee.create_version(
+                {'date_version': '2023-10-07', "distance_home_work": 40}
+            )
+        current_home_distance = self.employee.distance_home_work
+        current_version = self.employee.current_version_id
+        # Should change to new version
+        with freeze_time('2023-10-07'):
+            self.env['hr.employee']._cron_update_current_version_id()
+
+        self.assertNotEqual(
+            current_version,
+            self.employee.current_version_id,
+            "current_version_id should have changed after calling _cron_update_current_version_id()",
+        )
+        self.assertNotEqual(
+            current_home_distance,
+            self.employee.distance_home_work,
+            "distance_home_work should have changed after calling _cron_update_current_version_id()",
+        )
+
+    def test_get_version_without_any_version(self):
+        """
+        _get_version() should not raise an IndexError and should return an
+        empty recordset when the employee has no version at all, neither
+        active nor archived (e.g. an employee left over by a faulty
+        migration script).
+        """
+        # Bypass the ORM guards preventing an employee from losing its last
+        # version (_unlink_except_last_version, write() on 'active'), as
+        # this is precisely the invalid state a bad migration can produce.
+        self.env.cr.execute("DELETE FROM hr_version WHERE employee_id = %s", (self.employee.id,))
+        self.employee.invalidate_recordset(['version_ids'])
+        self.assertFalse(self.employee.version_ids)
+        self.assertFalse(self.employee._get_version())
 
 
 @tagged('-at_install', 'post_install')

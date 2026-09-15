@@ -18,6 +18,7 @@ export class AttachmentUploadService {
         this.nextId = -1;
         this.abortByAttachmentId = new Map();
         this.deferredByAttachmentId = new Map();
+        this.deletingAttachmentIds = new Set();
         this.uploadingAttachmentIds = new Set();
         this._fileUploadBus = new EventBus();
         /** @type {Map<number, {composer: import("models").Composer, thread: import("models").Thread}>} */
@@ -66,9 +67,7 @@ export class AttachmentUploadService {
                     return;
                 }
                 const { thread, composer } = this.targetsByTmpId.get(tmpId);
-                // FIXME: this should be only response. HOOT tests returns wrong data {result, error}
-                const attachmentData = response?.result ?? response;
-                this._processLoaded(thread, composer, attachmentData, tmpId, def);
+                this._processLoaded(thread, composer, response, tmpId, def);
             }
         );
         this.fileUploadService.bus.addEventListener(
@@ -123,7 +122,16 @@ export class AttachmentUploadService {
             abort();
             return;
         }
-        await attachment.remove();
+        if (this.deletingAttachmentIds.has(attachment.id)) {
+            return;
+        }
+        this.deletingAttachmentIds.add(attachment.id);
+
+        try {
+            await attachment.remove();
+        } finally {
+            this.deletingAttachmentIds.delete(attachment.id);
+        }
     }
 
     async upload(thread, composer, file, options) {
@@ -180,6 +188,7 @@ export class AttachmentUploadService {
             id: tmpId,
             mimetype: upload.type,
             name: upload.title,
+            resModel: upload.res_model,
             thread,
             extension: upload.title.split(".").pop(),
             uploading: true,

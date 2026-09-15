@@ -4,10 +4,16 @@ import { NavbarLinkPopover } from "./navbar_link_popover/navbar_link_popover";
 import { MenuDialog, EditMenuDialog } from "@website/components/dialog/edit_menu";
 import { withSequence } from "@html_editor/utils/resource";
 
+/**
+ * @typedef { Object } MenuDataShared
+ * @property { MenuDataPlugin['openEditMenu'] } openEditMenu
+ */
+
 export class MenuDataPlugin extends Plugin {
     static id = "menuDataPlugin";
     static shared = ["openEditMenu"];
     static dependencies = ["savePlugin"];
+    /** @type {import("plugins").WebsiteResources} */
     resources = {
         link_popovers: [
             withSequence(10, {
@@ -20,6 +26,10 @@ export class MenuDataPlugin extends Plugin {
                     ),
                 getProps: (props) => ({
                     ...props,
+                    // Nav menu links should always have `canEdit: true` because they are
+                    // `isContentEditable` false, which causes the default `canEdit` in
+                    // link_plugin.js to be false (it checks `isContentEditable`).
+                    canEdit: true,
                     onClickEditLink: (elem, callback) => {
                         const menuEl = elem.props.linkElement.querySelector("[data-oe-id]");
                         this.services.dialog.add(MenuDialog, {

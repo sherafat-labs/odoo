@@ -1,6 +1,7 @@
 import { Interaction } from '@web/public/interaction';
 import { registry } from '@web/core/registry';
 import { rpc } from '@web/core/network/rpc';
+import { redirect } from '@web/core/utils/urls';
 
 export class CustomerAddress extends Interaction {
     // /my/address & /my/account
@@ -62,6 +63,8 @@ export class CustomerAddress extends Interaction {
                 });
                 this._showInput('state_id');
             } else {
+                // empty existing options, only keep the placeholder.
+                selectStates.options.length = 1;
                 this._hideInput('state_id');
             }
         }
@@ -140,7 +143,7 @@ export class CustomerAddress extends Interaction {
             new FormData(this.addressForm),
         ))
         if (result.redirectUrl) {
-            window.location = result.redirectUrl;
+            redirect(result.redirectUrl);
         } else {
             // Highlight missing/invalid form values
             this.el.querySelectorAll('.is-invalid').forEach(element => {

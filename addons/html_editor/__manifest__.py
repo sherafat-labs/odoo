@@ -34,6 +34,8 @@ This addon provides an extensible, maintainable editor.
         'web.assets_backend': [
             ('include', 'html_editor.assets_editor'),
             'html_editor/static/src/others/dynamic_placeholder_plugin.js',
+            'html_editor/static/src/others/editor_dynamic_placeholder_popover.js',
+            'html_editor/static/src/others/editor_dynamic_placeholder_popover.xml',
             'html_editor/static/src/backend/**/*',
             'html_editor/static/src/fields/**/*',
             'html_editor/static/lib/vkbeautify/**/*',
@@ -113,7 +115,12 @@ This addon provides an extensible, maintainable editor.
         ],
         'html_editor.assets_prism': [
             'web/static/lib/prismjs/prism.js',
+            'web/static/lib/prismjs/themes/default.css',
         ],
+        'html_editor.assets_prism_dark': [
+            'web/static/lib/prismjs/prism.js',
+            'web/static/lib/prismjs/themes/okaida.css',
+        ]
     },
     'license': 'LGPL-3'
 }

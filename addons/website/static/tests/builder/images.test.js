@@ -11,6 +11,7 @@ import {
     queryOne,
     waitFor,
     waitForNone,
+    setInputRange,
 } from "@odoo/hoot-dom";
 import { contains, onRpc } from "@web/../tests/web_test_helpers";
 import {
@@ -19,8 +20,7 @@ import {
     setupWebsiteBuilderOeId,
 } from "./website_helpers";
 import { dummyBase64Img } from "@html_builder/../tests/helpers";
-import { testImg } from "./image_test_helpers";
-import { delay } from "@web/core/utils/concurrency";
+import { onRpcImg, testGifImg, testImg, testSvgImg } from "./image_test_helpers";
 import { expectElementCount } from "@html_editor/../tests/_helpers/ui_expectations";
 
 defineWebsiteModels();
@@ -50,14 +50,18 @@ test("Double click on image and replace it", async () => {
             public: true,
         },
     ]);
-    await setupWebsiteBuilder(`<div><img class=a_nice_img src='${dummyBase64Img}'></div>`);
+    const { waitSidebarUpdated } = await setupWebsiteBuilder(
+        `<div><img class=a_nice_img src='${dummyBase64Img}'></div>`
+    );
     expect(".modal-content").toHaveCount(0);
     await dblclick(":iframe img.a_nice_img");
     await animationFrame();
     expect(".modal-content:contains(Select a media) .o_upload_media_button").toHaveCount(1);
     expect("div.o-tooltip").toHaveCount(0);
     await contains(".o_select_media_dialog .o_button_area[aria-label='logo']").click();
+    await waitSidebarUpdated();
     await waitForNone(".o_select_media_dialog");
+    expect(".o_select_media_dialog").toHaveCount(0);
     expect(":iframe img").toHaveClass("o_modified_image_to_save");
     expect(".options-container[data-container-title='Image']").toHaveCount(1);
 });
@@ -121,7 +125,7 @@ test("pasted/dropped images are converted to attachments on save in website edit
         expect(params.res_model).toBe("ir.ui.view");
         expect.step("add_data");
         return {
-            image_src: "/test_image_url.png",
+            image_src: "/web/static/img/logo.png",
             access_token: "1234",
             public: false,
         };
@@ -129,7 +133,7 @@ test("pasted/dropped images are converted to attachments on save in website edit
 
     onRpc("ir.ui.view", "save", ({ args }) => {
         expect.step("save");
-        expect(args[1]).toInclude('src="/test_image_url.png?access_token=1234"');
+        expect(args[1]).toInclude('src="/web/static/img/logo.png?access_token=1234"');
         return true;
     });
 
@@ -167,12 +171,16 @@ test("pasted/dropped images are converted to attachments on save in website edit
 test("pasted/dropped images are converted to attachments on snippet save", async () => {
     const imageData =
         "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII";
+    const imageSrcs = {
+        "image-1.png": "/web/static/img/logo.png",
+        "image-2.png": "/web/static/img/logo2.png",
+    };
     onRpc("/html_editor/attachment/add_data", async (request) => {
         const { params } = await request.json();
         expect(params.data).toBe(imageData + "=");
         expect.step(`add_data ${params.name}`);
         return {
-            image_src: `/url_${params.name}`,
+            image_src: imageSrcs[params.name],
             access_token: "1234",
             public: false,
         };
@@ -180,14 +188,14 @@ test("pasted/dropped images are converted to attachments on snippet save", async
 
     onRpc("ir.ui.view", "save_snippet", ({ kwargs }) => {
         expect.step("save snippet");
-        expect(kwargs.arch).toInclude('src="/url_image-1.png?access_token=1234"');
+        expect(kwargs.arch).toInclude('src="/web/static/img/logo.png?access_token=1234"');
         return "Custom Cover";
     });
 
     onRpc("ir.ui.view", "save", ({ args }) => {
         expect.step("save");
-        expect(args[1]).toInclude('src="/url_image-1.png?access_token=1234"');
-        expect(args[1]).toInclude('src="/url_image-2.png?access_token=1234"');
+        expect(args[1]).toInclude('src="/web/static/img/logo.png?access_token=1234"');
+        expect(args[1]).toInclude('src="/web/static/img/logo2.png?access_token=1234"');
         return true;
     });
 
@@ -240,14 +248,14 @@ test("pasted/dropped images are converted to attachments on snippet save", async
 
 describe("Image format/optimize", () => {
     test("Should format an image to be 800px", async () => {
-        const { getEditor } = await setupWebsiteBuilder(`
+        const { getEditor, waitSidebarUpdated } = await setupWebsiteBuilder(`
         <div class="test-options-target">
             ${testImg}
         </div>
     `);
         const editor = getEditor();
         await contains(":iframe .test-options-target img").click();
-
+        await waitSidebarUpdated();
         await contains("[data-label='Format'] .dropdown").click();
         await waitFor('[data-action-id="setImageFormat"]');
         queryAll(`[data-action-id="setImageFormat"]`)
@@ -265,7 +273,7 @@ describe("Image format/optimize", () => {
         expect(queryFirst("[data-label='Format'] .dropdown").textContent).toMatch(/800px/);
     });
     test("should set the quality of an image to 50", async () => {
-        const { getEditor } = await setupWebsiteBuilder(`
+        const { getEditor, waitSidebarUpdated } = await setupWebsiteBuilder(`
         <div class="test-options-target">
             ${testImg}
         </div>
@@ -274,17 +282,70 @@ describe("Image format/optimize", () => {
 
         const img = await waitFor(":iframe .test-options-target img");
         await contains(":iframe .test-options-target img").click();
-
-        const input = await waitFor('[data-action-id="setImageQuality"] input');
-        input.value = 50;
-        input.dispatchEvent(new Event("input"));
-        await delay();
-        input.dispatchEvent(new Event("change"));
-        await delay();
+        await waitSidebarUpdated();
+        await setInputRange(`[data-action-id="setImageQuality"] input`, 50);
         // ensure the shape action has been applied
         await editor.shared.operation.next(() => {});
 
         expect(img.dataset.quality).toBe("50");
+    });
+    test("Quality option does not disappear when a shape is applied on the image", async () => {
+        onRpcImg("/html_builder/static/image_shapes/devices/iphone_front_portrait.svg");
+        onRpc("/html_editor/get_image_info", () => ({
+            attachment: { id: 1 },
+            original: {
+                id: 1,
+                image_src: "/website/static/src/img/snippets_demo/s_text_image.webp",
+                mimetype: "image/webp",
+            },
+        }));
+        // The first img corresponds to a default image on which a shape has
+        // been applied. The second one corresponds to a modified image on which
+        // a shape has been applied. The last one corresponds to a case where
+        // the mimetype information is not present (this case should not appear
+        // in practice but the system should be robust to this case as the
+        // backend has all the information needed to work correctly).
+        const { waitSidebarUpdated } = await setupWebsiteBuilder(`
+        <div class="test-options-target">
+            <img src='${dummyBase64Img}'
+                data-attachment-id="1" data-original-id="1"
+                data-original-src="/website/static/src/img/snippets_demo/s_text_image.webp"
+                data-mimetype="image/svg+xml"
+                data-shape="html_builder/devices/iphone_front_portrait"
+                data-mimetype-before-conversion="image/webp"
+                class="first"
+            >
+        </div>
+        <div class="test-options-target">
+            <img src='${dummyBase64Img}'
+                data-attachment-id="1" data-original-id="1"
+                data-original-src="/website/static/src/img/snippets_demo/s_text_image.webp"
+                data-mimetype="image/svg+xml"
+                data-shape="html_builder/devices/iphone_front_portrait"
+                data-mimetype-before-conversion="image/webp"
+                data-format-mimetype="image/webp"
+                class="second"
+            >
+        </div>
+        <div class="test-options-target">
+            <img src='${dummyBase64Img}'
+                data-attachment-id="1" data-original-id="1"
+                data-original-src="/website/static/src/img/snippets_demo/s_text_image.webp"
+                data-mimetype="image/svg+xml"
+                data-shape="html_builder/devices/iphone_front_portrait"
+                class="third"
+            >
+        </div>
+    `);
+        await contains(":iframe .test-options-target img.first").click();
+        await waitSidebarUpdated();
+        expect(`[data-action-id="setImageQuality"]`).toBeVisible();
+        await contains(":iframe .test-options-target img.second").click();
+        await waitSidebarUpdated();
+        expect(`[data-action-id="setImageQuality"]`).toBeVisible();
+        await contains(":iframe .test-options-target img.third").click();
+        await waitSidebarUpdated();
+        expect(`[data-action-id="setImageQuality"]`).toBeVisible();
     });
 });
 
@@ -295,10 +356,9 @@ test("Save image with correct parameter", async () => {
         expect(params.res_id).toBe(setupWebsiteBuilderOeId);
         expect(params.res_model).toBe("ir.ui.view");
         expect.step("modify_image");
+        // The controller returns image URLs keyed by size.
         return {
-            image_src: "/test_image_url.png",
-            access_token: "1234",
-            public: false,
+            original: "/web/static/img/logo.png?access_token=1234",
         };
     });
     onRpc("ir.ui.view", "save", ({ args }) => true);
@@ -312,5 +372,27 @@ test("Save image with correct parameter", async () => {
             >
         </div>`);
     await contains(".o-snippets-top-actions button:contains(Save)").click();
-    expect.verifySteps(["modify_image"]);
+    await expect.waitForSteps(["modify_image"]);
 });
+
+test("Correct options appear when clicking on a gif image", async () => {
+    await clickOnImgAndCheckOptions(testGifImg);
+});
+
+test("Correct options appear when clicking on a svg image", async () => {
+    await clickOnImgAndCheckOptions(testSvgImg);
+});
+
+async function clickOnImgAndCheckOptions(imgEl) {
+    const { waitSidebarUpdated } = await setupWebsiteBuilder(`
+        <div class="test-options-target">
+            ${imgEl}
+        </div>
+    `);
+    await contains(":iframe .test-options-target img").click();
+    await waitSidebarUpdated();
+    // Check that the options that need a canvas to work are not displayed
+    expect("[data-action-id='cropImage']").not.toHaveCount();
+    expect("[data-action-id='setImageFormat']").not.toHaveCount();
+    expect("[data-action-id='setImageQuality']").not.toHaveCount();
+}

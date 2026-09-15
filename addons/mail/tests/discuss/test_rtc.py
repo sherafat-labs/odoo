@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from odoo import fields
 from odoo.addons.mail.tests.common import MailCommon
+from odoo.addons.mail.tools import discuss
 from odoo.addons.mail.tools.discuss import Store
 from odoo.tests.common import HttpCase, new_test_user, tagged, users
 from odoo.tools.misc import mute_logger
@@ -13,6 +14,12 @@ from odoo.tools.misc import mute_logger
 
 @tagged("RTC", "post_install", "-at_install")
 class TestChannelRTC(MailCommon, HttpCase):
+
+    @users("employee")
+    def test_00_get_derived_sfu_key(self):
+        channel_key = discuss.get_derived_sfu_key(self.env, 42)
+        self.assertEqual(channel_key, discuss.get_derived_sfu_key(self.env, 42))
+        self.assertNotEqual(channel_key, discuss.get_derived_sfu_key(self.env, 43))
 
     @users('employee')
     @mute_logger('odoo.models.unlink')
@@ -178,11 +185,9 @@ class TestChannelRTC(MailCommon, HttpCase):
             [
                 # update new session
                 (self.cr.dbname, "discuss.channel", channel.id),
-                # message_post "started a live conference" (not asserted below)
-                (self.cr.dbname, "discuss.channel", channel.id),
                 # update new message separator
                 (self.cr.dbname, "res.partner", self.user_employee.partner_id.id),
-                # update of last interest (not asserted below)
+                # message_post "started a live conference" (not asserted below)
                 (self.cr.dbname, "discuss.channel", channel.id),
                 # update call history (not asserted below)
                 (self.cr.dbname, "discuss.channel", channel.id),
@@ -277,6 +282,7 @@ class TestChannelRTC(MailCommon, HttpCase):
     def test_11_start_call_in_group_should_invite_all_members_to_call(self):
         test_user = self.env['res.users'].sudo().create({'name': "Test User", 'login': 'test'})
         test_guest = self.env['mail.guest'].sudo().create({'name': "Test Guest"})
+        self.env["mail.presence"]._update_presence(test_guest)
         channel = self.env['discuss.channel']._create_group(partners_to=(self.user_employee.partner_id + test_user.partner_id).ids)
         channel._add_members(guests=test_guest)
         channel_member_test_user = channel.sudo().channel_member_ids.filtered(lambda channel_member: channel_member.partner_id == test_user.partner_id)
@@ -290,11 +296,9 @@ class TestChannelRTC(MailCommon, HttpCase):
             [
                 # update new session
                 (self.cr.dbname, "discuss.channel", channel.id),
-                # message_post "started a live conference" (not asserted below)
-                (self.cr.dbname, "discuss.channel", channel.id),
                 # update new message separator
                 (self.cr.dbname, "res.partner", self.user_employee.partner_id.id),
-                # update of last interest (not asserted below)
+                # message_post "started a live conference" (not asserted below)
                 (self.cr.dbname, "discuss.channel", channel.id),
                 # update call history (not asserted below)
                 (self.cr.dbname, "discuss.channel", channel.id),
@@ -456,6 +460,7 @@ class TestChannelRTC(MailCommon, HttpCase):
     def test_20_join_call_should_cancel_pending_invitations(self):
         test_user = self.env['res.users'].sudo().create({'name': "Test User", 'login': 'test'})
         test_guest = self.env['mail.guest'].sudo().create({'name': "Test Guest"})
+        self.env["mail.presence"]._update_presence(test_guest)
         channel = self.env['discuss.channel']._create_group(partners_to=(self.user_employee.partner_id + test_user.partner_id).ids)
         channel._add_members(guests=test_guest)
         channel_member = channel.sudo().channel_member_ids.filtered(lambda channel_member: channel_member.partner_id == self.user_employee.partner_id)
@@ -670,6 +675,7 @@ class TestChannelRTC(MailCommon, HttpCase):
     def test_21_leave_call_should_cancel_pending_invitations(self):
         test_user = self.env['res.users'].sudo().create({'name': "Test User", 'login': 'test'})
         test_guest = self.env['mail.guest'].sudo().create({'name': "Test Guest"})
+        self.env["mail.presence"]._update_presence(test_guest)
         channel = self.env['discuss.channel']._create_group(partners_to=(self.user_employee.partner_id + test_user.partner_id).ids)
         channel._add_members(guests=test_guest)
         channel_member = channel.sudo().channel_member_ids.filtered(lambda channel_member: channel_member.partner_id == self.user_employee.partner_id)
@@ -799,6 +805,7 @@ class TestChannelRTC(MailCommon, HttpCase):
     def test_25_lone_call_participant_leaving_call_should_cancel_pending_invitations(self):
         test_user = self.env['res.users'].sudo().create({'name': "Test User", 'login': 'test'})
         test_guest = self.env['mail.guest'].sudo().create({'name': "Test Guest"})
+        self.env["mail.presence"]._update_presence(test_guest)
         channel = self.env['discuss.channel']._create_group(partners_to=(self.user_employee.partner_id + test_user.partner_id).ids)
         channel._add_members(guests=test_guest)
         channel_member = channel.sudo().channel_member_ids.filtered(lambda channel_member: channel_member.partner_id == self.user_employee.partner_id)
@@ -931,6 +938,7 @@ class TestChannelRTC(MailCommon, HttpCase):
     def test_30_add_members_while_in_call_should_invite_new_members_to_call(self):
         test_user = self.env['res.users'].sudo().create({'name': "Test User", 'login': 'test'})
         test_guest = self.env['mail.guest'].sudo().create({'name': "Test Guest"})
+        self.env["mail.presence"]._update_presence(test_guest)
         channel = self.env['discuss.channel']._create_group(partners_to=self.user_employee.partner_id.ids)
         channel_member = channel.sudo().channel_member_ids.filtered(lambda member: member.partner_id == self.user_employee.partner_id)
         now = fields.Datetime.now()
@@ -950,8 +958,6 @@ class TestChannelRTC(MailCommon, HttpCase):
                 (self.cr.dbname, "discuss.channel", channel.id),
                 # discuss.channel/joined
                 (self.cr.dbname, "res.partner", test_user.partner_id.id),
-                # mail.record/insert - discuss.channel (last_interest_dt)
-                (self.cr.dbname, "discuss.channel", channel.id),
                 # mail.record/insert - discuss.channel.member (message_unread_counter, new_message_separator, …)
                 (self.cr.dbname, "res.partner", self.user_employee.partner_id.id),
                 # discuss.channel/new_message

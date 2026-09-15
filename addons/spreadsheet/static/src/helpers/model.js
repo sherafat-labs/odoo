@@ -11,6 +11,7 @@ import {
     isMarkdownIrMenuIdUrl,
     isIrMenuXmlUrl,
 } from "@spreadsheet/ir_ui_menu/odoo_menu_link_cell";
+import { getNeutralizedLink } from "./neutralized_link";
 
 /**
  * @typedef {import("@spreadsheet").OdooSpreadsheetModel} OdooSpreadsheetModel
@@ -58,6 +59,7 @@ export async function waitForOdooSources(model) {
  * @returns {Promise<void>}
  */
 export async function waitForDataLoaded(model) {
+    await model.getters.loadUsedGeoJsonFeatures();
     await waitForOdooSources(model);
     const odooDataProvider = model.config.custom.odooDataProvider;
     if (!odooDataProvider) {
@@ -105,7 +107,7 @@ export async function freezeOdooData(model) {
                 if (pivotId && model.getters.getPivotCoreDefinition(pivotId).type !== "ODOO") {
                     continue;
                 }
-                sheet.cells[xc] = evaluatedCell.value.toString();
+                sheet.cells[xc] = toFrozenContent(evaluatedCell);
                 if (evaluatedCell.format) {
                     sheet.formats[xc] = getItemId(evaluatedCell.format, data.formats);
                 }
@@ -120,7 +122,7 @@ export async function freezeOdooData(model) {
                                 col,
                                 row,
                             });
-                            sheet.cells[xc] = evaluatedCell.value.toString();
+                            sheet.cells[xc] = toFrozenContent(evaluatedCell);
                             if (evaluatedCell.format) {
                                 sheet.formats[xc] = getItemId(evaluatedCell.format, data.formats);
                             }
@@ -129,7 +131,7 @@ export async function freezeOdooData(model) {
                 }
             }
             if (containsLinkToOdoo(evaluatedCell.link)) {
-                sheet.cells[xc] = evaluatedCell.link.label;
+                sheet.cells[xc] = `[${evaluatedCell.link.label}](${getNeutralizedLink()})`;
             }
         }
         for (const figure of sheet.figures) {
@@ -172,6 +174,14 @@ export async function freezeOdooData(model) {
     data.lists = {};
     exportGlobalFiltersToSheet(model, data);
     return data;
+}
+
+function toFrozenContent(evaluatedCell) {
+    const value = evaluatedCell.value;
+    if (value === "") {
+        return '=""';
+    }
+    return value.toString();
 }
 
 /**
