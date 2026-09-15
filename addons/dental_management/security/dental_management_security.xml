@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_dental_management_user" model="res.groups">
+        <field name="name">Advanced Management User</field>
+        <field name="category_id" ref="dental_core.module_category_dental"/>
+        <field name="implied_ids" eval="[(4, ref('dental_core.group_dental_user'))]"/>
+    </record>
+</odoo>

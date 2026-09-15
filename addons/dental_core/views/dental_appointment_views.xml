@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_dental_appointment_tree" model="ir.ui.view">
+        <field name="name">dental.appointment.list</field>
+        <field name="model">dental.appointment</field>
+        <field name="arch" type="xml">
+            <list string="Appointments" decoration-info="state=='draft'" decoration-warning="state=='confirmed'" decoration-primary="state=='in_progress'" decoration-success="state=='done'" decoration-muted="state=='cancelled'">
+                <field name="name"/>
+                <field name="patient_id"/>
+                <field name="dentist_id"/>
+                <field name="appointment_date"/>
+                <field name="duration" widget="float_time"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_dental_appointment_form" model="ir.ui.view">
+        <field name="name">dental.appointment.form</field>
+        <field name="model">dental.appointment</field>
+        <field name="arch" type="xml">
+            <form string="Dental Appointment">
+                <header>
+                    <button name="action_confirm" string="Confirm" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_start" string="Start Session" type="object" class="btn-primary" invisible="state != 'confirmed'"/>
+                    <button name="action_done" string="Complete" type="object" class="btn-success" invisible="state != 'in_progress'"/>
+                    <button name="action_cancel" string="Cancel" type="object" invisible="state in ('done', 'cancelled')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,in_progress,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Appointment Details">
+                            <field name="patient_id"/>
+                            <field name="dentist_id"/>
+                            <field name="appointment_date"/>
+                            <field name="duration" widget="float_time"/>
+                            <field name="end_date"/>
+                        </group>
+                        <group string="Treatments">
+                            <field name="treatment_ids" widget="many2many_tags"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Notes">
+                            <field name="notes" placeholder="Appointment notes, clinical observations..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_dental_appointment" model="ir.actions.act_window">
+        <field name="name">Appointments</field>
+        <field name="res_model">dental.appointment</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Schedule a new dental appointment!
+            </p>
+        </field>
+    </record>
+
+    <record id="action_dental_appointment_patient" model="ir.actions.act_window">
+        <field name="name">Patient Appointments</field>
+        <field name="res_model">dental.appointment</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('patient_id', '=', active_id)]</field>
+    </record>
+
+    <record id="action_dental_appointment_dentist" model="ir.actions.act_window">
+        <field name="name">Dentist Appointments</field>
+        <field name="res_model">dental.appointment</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('dentist_id', '=', active_id)]</field>
+    </record>
+</odoo>

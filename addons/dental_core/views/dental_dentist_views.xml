@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_dental_dentist_tree" model="ir.ui.view">
+        <field name="name">dental.dentist.list</field>
+        <field name="model">dental.dentist</field>
+        <field name="arch" type="xml">
+            <list string="Dentists">
+                <field name="name"/>
+                <field name="license_number"/>
+                <field name="specialization"/>
+                <field name="phone"/>
+                <field name="email"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_dental_dentist_form" model="ir.ui.view">
+        <field name="name">dental.dentist.form</field>
+        <field name="model">dental.dentist</field>
+        <field name="arch" type="xml">
+            <form string="Dentist Profile">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="%(action_dental_appointment_dentist)d" type="action" class="oe_stat_button" icon="fa-calendar">
+                            <field name="appointment_count" widget="statinfo" string="Appointments"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group string="Practitioner Info">
+                            <field name="name"/>
+                            <field name="license_number"/>
+                            <field name="specialization"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Contact Info">
+                            <field name="phone"/>
+                            <field name="email"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_dental_dentist" model="ir.actions.act_window">
+        <field name="name">Dentists</field>
+        <field name="res_model">dental.dentist</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Add a new dentist practitioner!
+            </p>
+        </field>
+    </record>
+</odoo>
